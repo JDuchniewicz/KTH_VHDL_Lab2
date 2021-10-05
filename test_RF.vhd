@@ -37,12 +37,12 @@ architecture tb of RF_tb is
     signal tt_QA        : STD_LOGIC_VECTOR(c_N - 1 downto 0);
     signal tt_QB        : STD_LOGIC_VECTOR(c_N - 1 downto 0);
     --shared variable sv_expected : STD_LOGIC_VECTOR(2 downto 0) := (others => '0'); -- they should be protected to be encapsulated
-    shared variable sv_expected_A : STD_LOGIC_VECTOR(c_N downto 0);
-    shared variable sv_expected_B : STD_LOGIC_VECTOR(c_N downto 0);
+    shared variable sv_expected_A : STD_LOGIC_VECTOR(c_N - 1 downto 0);
+    shared variable sv_expected_B : STD_LOGIC_VECTOR(c_N - 1 downto 0);
 begin
-    DUT_RF : RF map generic(M => c_M,
-                            N => c_N);
-                map port(WD => tt_WD,
+    DUT_RF : RF generic map(M => c_M,
+                            N => c_N)
+                port map(WD => tt_WD,
                          WAddr => tt_WAddr,
                          Write => tt_Write,
                          RA => tt_RA,
@@ -75,33 +75,34 @@ begin
     -- reset
     rst <= '1';
     wait for 10 ns;
+    rst <= '0';
 
     -- load the RF with data
-    for i in 2**(c_M - 1) loop
-        tt_WD <= std_logic_vector(unsigned(i));
-        tt_WAddr <= std_logic_vector(unsigned(i - 1));
+    for i in 0 to 2**c_M - 1 loop
+        tt_WD <= std_logic_vector(to_unsigned(i + 1, tt_WD'length));
+        tt_WAddr <= std_logic_vector(to_unsigned(i, tt_WAddr'length));
         tt_Write <= '1';
         wait for 10 ns;
     end loop;
 
     -- check if the data is loaded
-    for i in 2**(c_M - 1) / 2 loop
-        tt_RA <= std_logic_vector(unsigned(i * 2));
+    for i in 0 to 2**c_M / 2 - 1 loop
+        tt_RA <= std_logic_vector(to_unsigned(i * 2, tt_RA'length));
         tt_ReadA <= '1';
-        sv_expected_A <= std_logic_vector(unsigned(i * 2 - 1));
+        sv_expected_A := std_logic_vector(to_unsigned(i * 2 + 1, sv_expected_A'length));
 
-        tt_RB <= std_logic_vector(unsigned(i * 2 + 1));
+        tt_RB <= std_logic_vector(to_unsigned(i * 2 + 1, tt_RB'length));
         tt_ReadB <= '1';
-        sv_expected_B <= std_logic_vector(unsigned(i * 2));
+        sv_expected_B := std_logic_vector(to_unsigned(i * 2 + 1 + 1, sv_expected_B'length));
 
         wait for 10 ns;
     end loop;
 
     -- check if reading a 0 outputs 0s
-    tt_ReadA <= '0'
-    sv_expected_A <= std_logic_vector(0);
-    tt_ReadB <= '0'
-    sv_expected_B <= std_logic_vector(0);
+    tt_ReadA <= '0';
+    sv_expected_A := (others => '0');
+    tt_ReadB <= '0';
+    sv_expected_B := (others => '0');
     wait for 10 ns;
 
     end process generator;

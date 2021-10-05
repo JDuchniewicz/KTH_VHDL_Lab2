@@ -24,8 +24,8 @@ architecture data_flow of RF is
     type t_memory is array (0 to 2 ** M - 1) of t_word;
     signal mem  : t_memory;
 begin
-    proc : process
-    begin (WD, WAddr, Write, RA, ReadA, RB, ReadB, rst, clk)
+    proc : process (WD, WAddr, Write, RA, ReadA, RB, ReadB, rst, clk)
+    begin
     if rst = '1' then
         QA <= (others => '0');
         QB <= (others => '0');
@@ -40,13 +40,13 @@ begin
         if ReadA = '1' then
             QA <= mem(to_integer(unsigned(RA)));
         else
-            QA <= std_logic_vector(0);
+            QA <= (others => '0');
         end if;
 
         if ReadB = '1' then
             QB <= mem(to_integer(unsigned(RB)));
         else
-            QB <= std_logic_vector(0);
+            QB <= (others => '0');
         end if;
     end if;
     end process;
