@@ -22,140 +22,197 @@ architecture tb of ALU_tb is
     end component;
 
     signal clk          : STD_ULOGIC := '0';
-    signal t_OP         : STD_LOGIC_VECTOR(2 downto 0);
-    signal t_A          : STD_LOGIC_VECTOR(2 downto 0);
-    signal t_B          : STD_LOGIC_VECTOR(2 downto 0);
-    signal t_Sum        : STD_LOGIC_VECTOR(2 downto 0);
-    signal t_Z_Flag     : STD_LOGIC;
-    signal t_N_Flag     : STD_LOGIC;
-    signal t_O_Flag     : STD_LOGIC;
-    signal t_en         : STD_LOGIC;
-    signal t_rst        : STD_LOGIC;
-    shared variable sv_expected : STD_LOGIC_VECTOR(2 downto 0);
-    shared variable sv_z_expected : STD_LOGIC;
-    shared variable sv_n_expected : STD_LOGIC;
-    shared variable sv_o_expected : STD_LOGIC;
-    --signal tt_rtl_result: STD_LOGIC_VECTOR(1 downto 0); should this be tested as well?
+    signal tt_OP         : STD_LOGIC_VECTOR(2 downto 0);
+    signal tt_A          : STD_LOGIC_VECTOR(2 downto 0);
+    signal tt_B          : STD_LOGIC_VECTOR(2 downto 0);
+    signal tt_Sum        : STD_LOGIC_VECTOR(2 downto 0);
+    signal tt_Z_Flag     : STD_LOGIC;
+    signal tt_N_Flag     : STD_LOGIC;
+    signal tt_O_Flag     : STD_LOGIC;
+    signal tt_en         : STD_LOGIC;
+    signal tt_rst        : STD_LOGIC;
+    shared variable sv_expected : STD_LOGIC_VECTOR(2 downto 0) := (others => '0'); -- they should be protected to be encapsulated
+    shared variable sv_z_expected : STD_LOGIC := '0';
+    shared variable sv_n_expected : STD_LOGIC := '0';
+    shared variable sv_o_expected : STD_LOGIC := '0';
+    --signal ttt_rtl_result: STD_LOGIC_VECTOR(1 downto 0); should this be tested as well?
 
 begin
     DUT_ALU : ALU   generic map (N => 3)
-                    port map (OP => t_OP,
-                              A => t_A,
-                              B => t_B,
-                              Sum => t_Sum,
-                              Z_Flag => t_Z_Flag,
-                              N_Flag => t_N_Flag,
-                              O_Flag => t_O_Flag,
+                    port map (OP => tt_OP,
+                              A => tt_A,
+                              B => tt_B,
+                              Sum => tt_Sum,
+                              Z_Flag => tt_Z_Flag,
+                              N_Flag => tt_N_Flag,
+                              O_Flag => tt_O_Flag,
                               clk => clk,
-                              en => t_en,
-                              rst => t_rst);
+                              en => tt_en,
+                              rst => tt_rst);
 
     clk <= not clk after 5 ns;
-    monitor : process (t_Sum)
+    monitor : process (tt_Sum)
     begin
-        if t_Sum /= sv_expected then
+        if tt_Sum /= sv_expected then
             assert false
-            report "Sum is NOT correct = " & integer'image(to_integer(unsigned(t_Sum))) & " should be " & integer'image(to_integer(unsigned(sv_expected)))
+            report "Sum is NOT correct = " & integer'image(to_integer(signed(tt_Sum))) & " should be " & integer'image(to_integer(signed(sv_expected)))
             severity error;
         end if;
-        if t_Z_Flag /= sv_z_expected then
+        if tt_Z_Flag /= sv_z_expected then
             assert false
-            report "Z_Flag is NOT correct = " & std_logic'image(t_Z_Flag) & " should be " & std_logic'image(sv_z_expected)
+            report "Z_Flag is NOT correct = " & std_logic'image(tt_Z_Flag) & " should be " & std_logic'image(sv_z_expected)
             severity error;
         end if;
-        if t_N_Flag /= sv_n_expected then
+        if tt_N_Flag /= sv_n_expected then
             assert false
-            report "N_Flag is NOT correct = " & std_logic'image(t_N_Flag) & " should be " & std_logic'image(sv_n_expected)
+            report "N_Flag is NOT correct = " & std_logic'image(tt_N_Flag) & " should be " & std_logic'image(sv_n_expected)
             severity error;
         end if;
-        if t_O_Flag /= sv_o_expected then
+        if tt_O_Flag /= sv_o_expected then
             assert false
-            report "O_Flag is NOT correct = " & std_logic'image(t_O_Flag) & " should be " & std_logic'image(sv_o_expected)
+            report "O_Flag is NOT correct = " & std_logic'image(tt_O_Flag) & " should be " & std_logic'image(sv_o_expected)
             severity error;
         end if;
     end process monitor;
 
     generator : process
     begin
+        -- zero out expected signals
+        sv_expected := (others => '0');
+        sv_z_expected := '0';
+        sv_n_expected := '0';
+        sv_o_expected := '0';
+
+        -- reset the system
+        tt_rst <= '1';
+        wait for 10 ns;
+        tt_rst <= '0';
+        tt_en <= '1';
+
+		--	when OP_ADD => v_Sum :=
+		--	when OP_SUB => v_Sum := std_logic_vector(unsigned(A) - unsigned(B));
+		--	when OP_AND => v_Sum := A and B;
+		--	when OP_OR 	=> v_Sum := A or B;
+		--	when OP_XOR => v_Sum := A xor B;
+		--	when OP_NOT => v_Sum := not A;
+		--	when OP_MOV => v_Sum := A;
+		--	when OP_Zero=> v_Sum := (others => '0');
         wait for 10 ns;
         --for i in
         -- OP_ADD
-        t_OP <= "000";
-        t_A <= (others => '0');
-        t_B <= (others => '0'); -- test for Z_Flag
-        wait for 10 ns;
-        assert t_Z_Flag = '1'
-            report "Error OP_ADD Z_Flag test. Sum = " & integer'image(to_integer(unsigned(t_Sum)))
-            severity error;
+        tt_OP <= "000";
+        tt_A <= (others => '0');
+        tt_B <= (others => '0'); -- test for Z_Flag
+        sv_z_expected := '1';
+        sv_o_expected := '0';
+        sv_n_expected := '0';
+        wait for 5 ns;
+        sv_expected := std_logic_vector(signed(tt_A) + signed(tt_B)); -- have to wait for result of clocked assignment for A and B
+        -- need additional wait so that signals are compared (sv_expected has just changed)
+        wait for 5 ns;
 
-        t_A <= "011"; -- test overflow of 2's complement
-        t_B <= "001";
-        wait for 10 ns;
-        assert t_O_Flag = '1'
-            report "Error OP_ADD O_Flag test. Sum = " & integer'image(to_integer(unsigned(t_Sum)))
-            severity error;
+        tt_A <= "011"; -- test overflow of 2's complement
+        tt_B <= "001";
+        sv_z_expected := '0';
+        sv_o_expected := '1';
+        sv_n_expected := '1';
+        wait for 5 ns;
+        sv_expected := std_logic_vector(signed(tt_A) + signed(tt_B));
+        wait for 5 ns;
 
         -- OP_SUB
-        t_OP <= "001";
-        t_A <= "001"; -- test negative
-        t_B <= "010";
-        wait for 10 ns;
-        assert t_N_Flag = '1'
-            report "Error OP_SUB N_Flag test. Sum = " & integer'image(to_integer(unsigned(t_Sum)))
-            severity error;
+        tt_OP <= "001";
+        tt_A <= "001"; -- test negative
+        tt_B <= "010";
+        sv_z_expected := '0';
+        sv_o_expected := '1';
+        sv_n_expected := '1';
+        wait for 5 ns;
+        sv_expected := std_logic_vector(signed(tt_A) - signed(tt_B));
+        wait for 5 ns;
 
         -- OP_AND
-        t_OP <= "010";
-        t_A <= "111";
-        t_B <= "000";
-        wait for 10 ns;
-        assert t_Z_Flag = '1'
-            report "Error OP_AND Z_Flag test. Sum = " & integer'image(to_integer(unsigned(t_Sum)))
-            severity error;
+        tt_OP <= "010";
+        tt_A <= "111";
+        tt_B <= "000";
+        sv_z_expected := '1';
+        sv_o_expected := '0';
+        sv_n_expected := '0';
+        wait for 5 ns;
+        sv_expected := tt_A and tt_B;
+        wait for 5 ns;
 
         -- OP_OR
-        t_OP <= "011";
-        t_A <= "111";
-        t_B <= "000";
-        wait for 10 ns;
-        assert t_Z_Flag = '0'
-            report "Error OP_OR Z_Flag test. Sum = " & integer'image(to_integer(unsigned(t_Sum)))
-            severity error;
+        tt_OP <= "011";
+        tt_A <= "111";
+        tt_B <= "000";
+        sv_z_expected := '0';
+        sv_o_expected := '0';
+        sv_n_expected := '1';
+        wait for 5 ns;
+        sv_expected := tt_A or tt_B;
+        wait for 5 ns;
 
         -- OP_XOR
-        t_OP <= "100";
-        t_A <= "101";
-        t_B <= "000";
-        wait for 10 ns;
-        assert t_Z_Flag = '0'
-            report "Error OP_XOR Z_Flag test. Sum = " & integer'image(to_integer(unsigned(t_Sum)))
-            severity error;
+        tt_OP <= "100";
+        tt_A <= "101";
+        tt_B <= "000";
+        sv_z_expected := '0';
+        sv_o_expected := '0';
+        sv_n_expected := '1';
+        wait for 5 ns;
+        sv_expected := tt_A xor tt_B;
+        wait for 5 ns;
 
         -- OP_NOT
-        t_OP <= "101";
-        t_A <= "101";
-        wait for 10 ns;
-        assert t_Sum = "010"
-            report "Error OP_NOT test. Sum = " & integer'image(to_integer(unsigned(t_Sum)))
-            severity error;
-
+        tt_OP <= "101";
+        tt_A <= "101";
+        sv_z_expected := '0';
+        sv_o_expected := '0';
+        sv_n_expected := '0';
+        wait for 5 ns;
+        sv_expected := not tt_A;
+        wait for 5 ns;
 
         -- OP_MOV
-        t_OP <= "110";
-        t_A <= "100";
-        wait for 10 ns;
-        assert t_Sum = "100"
-            report "Error OP_MOV test. Sum = " & integer'image(to_integer(unsigned(t_Sum)))
-            severity error;
-
+        tt_OP <= "110";
+        tt_A <= "100";
+        sv_z_expected := '0';
+        sv_o_expected := '0';
+        sv_n_expected := '1';
+        wait for 5 ns;
+        sv_expected := tt_A;
+        wait for 5 ns;
 
         -- OP_Zero
-        t_OP <= "111";
-        wait for 10 ns;
-        assert t_Z_Flag = '1' and t_Sum = "000"
-            report "Error OP_Zero Z_Flag test. Sum = " & integer'image(to_integer(unsigned(t_Sum)))
-            severity error;
+        tt_OP <= "111";
+        sv_z_expected := '1';
+        sv_o_expected := '0';
+        sv_n_expected := '0';
+        wait for 5 ns;
+        sv_expected := (others => '0');
+        wait for 5 ns;
 
+        -- test disabling en
+        -- load the data
+        tt_OP <= "110";
+        tt_A <= "100";
+        sv_z_expected := '0';
+        sv_o_expected := '0';
+        sv_n_expected := '1';
+        wait for 5 ns;
+        sv_expected := tt_A;
+        tt_en <= '0';
+        wait for 5 ns;
+
+        tt_OP <= "110";
+        tt_A <= "000";
+        sv_z_expected := '0'; -- expect the same flags
+        sv_o_expected := '0';
+        sv_n_expected := '1';
+        wait for 5 ns;
+        sv_expected := "100"; -- expect no change
+        wait for 5 ns;
 
     end process;
 end tb;

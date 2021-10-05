@@ -19,17 +19,9 @@ end ALU;
 architecture data_flow of ALU is -- should it be called behavioral?
 	type t_operation is (OP_ADD, OP_SUB, OP_AND, OP_OR, OP_XOR, OP_NOT, OP_MOV, OP_Zero);
 
-    function nor_reduction(vec : IN STD_LOGIC_VECTOR) return STD_LOGIC is
-        variable v_res : STD_LOGIC := '1';
-    begin
-        for i in vec'range loop
-            v_res := v_res nor vec(i);
-        end loop;
-        return v_res;
-    end function;
-
+    constant c_all_zeros : STD_LOGIC_VECTOR(A'range) := (others => '0');
 begin
-	proc : process(OP, A, B)
+	proc : process(OP, A, B, rst, en, clk)
 		variable v_Sum :    STD_LOGIC_VECTOR(N - 1 downto 0);
         variable v_Z_Flag : STD_LOGIC;
         variable v_N_Flag : STD_LOGIC;
@@ -42,8 +34,8 @@ begin
         O_Flag <= '0';
     elsif en = '1' then
 		case (t_operation'val(to_integer(unsigned(OP)))) is
-			when OP_ADD => v_Sum := std_logic_vector(unsigned(A) + unsigned(B));
-			when OP_SUB => v_Sum := std_logic_vector(unsigned(A) - unsigned(B));
+			when OP_ADD => v_Sum := std_logic_vector(signed(A) + signed(B));
+			when OP_SUB => v_Sum := std_logic_vector(signed(A) - signed(B));
 			when OP_AND => v_Sum := A and B;
 			when OP_OR 	=> v_Sum := A or B;
 			when OP_XOR => v_Sum := A xor B;
@@ -52,7 +44,11 @@ begin
 			when OP_Zero=> v_Sum := (others => '0');
 		end case;
         -- flags
-        v_Z_Flag := nor_reduction(v_Sum); -- need a function for reduction because quartus does not implement unary operators -.-
+        if v_Sum = c_all_zeros then
+            v_Z_Flag := '1';
+        else
+            v_Z_Flag := '0';
+        end if;
         v_N_Flag := v_Sum(N - 1) and '1';
         -- this could be implemented easier if we know the carry value but it is implemented by the compiler
         if (A(N - 1) = '1' and B(N - 1) = '1') then -- if bits before are the same but the result is different we have overflow
