@@ -29,6 +29,7 @@ begin
     if rst = '1' then
         QA <= (others => '0');
         QB <= (others => '0');
+        mem <= (others => (others => '0')); -- reset the memory contents
     else
         -- write 1 on rising_edge and read 2 async
         if rising_edge(clk) then

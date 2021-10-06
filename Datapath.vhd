@@ -63,7 +63,7 @@ architecture structural of Datapath is
 
 begin
     RF_1 : RF generic map(M => M,
-                          N => N);
+                          N => N)
                 port map(WD => s_WD,
                          WAddr => WAddr,
                          Write => Write,
@@ -76,7 +76,7 @@ begin
                          rst => rst,
                          clk => clk);
 
-    ALU_1 : ALU generic map(N => N);
+    ALU_1 : ALU generic map(N => N)
                 port map(OP => OP,
                          A => s_QA,
                          B => s_QB,
@@ -88,21 +88,20 @@ begin
                          en => EN,
                          rst => rst);
 
-    if rst = '1' then
-    -- should be handled at all here?
+    proc : process (IE, OE, clk)
+    begin
+    -- IE
+    if IE = '1' then
+        s_WD <= Input;
     else
-        -- IE
-        if IE = '1' then
-            s_WD <= Input;
-        else
-            s_WD <= s_Sum;
-        end if;
-
-        -- OE
-        if OE = '1' then
-            Output <= s_Sum;
-        else
-            Output <= (others => 'Z');
-        end if;
+        s_WD <= s_Sum;
     end if;
+
+    -- OE
+    if OE = '1' then
+        Output <= s_Sum;
+    else
+        Output <= (others => 'Z');
+    end if;
+    end process;
 end structural;
