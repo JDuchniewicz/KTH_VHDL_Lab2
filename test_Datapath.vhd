@@ -89,8 +89,8 @@ begin
     rst <= '1';
     tt_IE <= '0';
     tt_OE <= '0';
-    wait for 10 ns;
     sv_expected_output := "ZZZ";
+    wait for 10 ns;
 
     rst <= '0';
 
@@ -107,29 +107,31 @@ begin
     tt_WAddr <= std_logic_vector(to_unsigned(2, tt_WAddr'length));
     wait for 10 ns;
 
-    -- add 1 several times and read the result from the Datapath (RF contains zeros)
-    for i in 1 to 10 loop
-        tt_OP <= "000";
-        tt_EN <= '1';
-        tt_WAddr <= std_logic_vector(to_unsigned(1, tt_WAddr'length));
-        --if i = 1 then -- TODO: check what is going on - looks like the calculation takes two clock cycles so need to wait this time
-        --    tt_Write <= '0';
-        --else
-            tt_Write <= '1';
-        --end if;
-        tt_IE <= '0'; -- select data from ALU and write back to RF
 
-        tt_OE <= '1';
-        tt_RA <= std_logic_vector(to_unsigned(1, tt_RA'length));
-        tt_ReadA <= '1';
-        tt_RB <= std_logic_vector(to_unsigned(2, tt_RB'length));
-        tt_ReadB <= '1';
-        sv_expected_output := std_logic_vector(to_unsigned(i - 1, sv_expected_output'length)); -- it should hold result from last cycle
-        wait for 20 ns;
+    -- kickstart the addition
+    tt_OP <= "000";
+    tt_WAddr <= std_logic_vector(to_unsigned(1, tt_WAddr'length));
+    tt_Write <= '0'; -- do not write yet!, 1 cycle latency for the data to propagate to ALU
+    tt_OE <= '0';
+    -- load the 1's to ALU
+    tt_RA <= std_logic_vector(to_unsigned(1, tt_RA'length));
+    tt_ReadA <= '1';
+    tt_RB <= std_logic_vector(to_unsigned(2, tt_RB'length));
+    tt_ReadB <= '1';
+    wait for 10 ns; -- still 'ZZZ' on the output since OE is 0
+
+    -- 2 cycle operation due to ALU and RF write/op latency
+    for i in 2 to 7 loop
+        tt_OE <= '1'; -- now the results will be good to write to the RF
+        tt_IE <= '0'; -- read only data from ALU
+        tt_Write <= '1';
+        sv_expected_output := std_logic_vector(to_unsigned(i, sv_expected_output'length));
+        wait for 20 ns; -- while it waits here next operation propagates
     end loop;
 
-    -- read the data to check if the value is proper last time
-    sv_expected_output := std_logic_vector(to_unsigned(10, sv_expected_output'length));
+    -- check if overflowed
+    sv_expected_output := std_logic_vector(to_unsigned(0, sv_expected_output'length));
+    wait for 20 ns;
 
     end process;
 end tb;
