@@ -11,7 +11,7 @@ entity clk_divider is
 end clk_divider;
 
 architecture structural of clk_divider is
-    constant COUNT : INTEGER := IN_FREQ / OUT_FREQ - 1; -- since we count from 0
+    constant COUNT : INTEGER := IN_FREQ / OUT_FREQ / 2 - 1; -- since we count from 0
 begin
     proc : process(clk, rst)
         variable v_counter : INTEGER := 0;
@@ -22,10 +22,9 @@ begin
         elsif rising_edge(clk) then
             if v_counter = COUNT then
                 v_counter := 0;
-                out_clk <= '1';
+                out_clk <= not out_clk;
             else
                 v_counter := v_counter + 1;
-                out_clk <= '0';
             end if;
         end if;
     end process;
